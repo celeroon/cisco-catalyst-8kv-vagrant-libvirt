@@ -1,0 +1,64 @@
+Vagrant.configure("2") do |config|
+  config.vm.define "router1" do |node|
+    
+    # Basic VM info
+    node.vm.guest = :freebsd
+
+    node.vm.box = "cisco-c8000v"
+    node.vm.box_version = "17.10.01a"
+
+    # Disable or modify synced folders
+    node.nfs.verify_installed = false
+    node.vm.synced_folder ".", "/vagrant", disabled: true
+
+    # Disable hosts modification
+    node.vm.allow_hosts_modification = false
+
+    # Provider-specific options
+    node.vm.provider :libvirt do |libvirt|
+      libvirt.management_network_name = "default"
+      # libvirt.management_network_address = "192.168.0.0/24"
+      # libvirt.management_network_mac = "52:54:00:00:01:05"
+      libvirt.management_network_keep = true
+
+      # domain.cpus = 1
+      libvirt.features = ['acpi']
+      # domain.memory = 4096
+      libvirt.disk_driver :cache => 'none'
+      # domain.nic_model_type = 'virtio'
+
+
+      libvirt.cpus = 2
+      libvirt.memory = 4096
+      libvirt.disk_bus = "virtio"
+      libvirt.nic_model_type = "virtio"
+      # libvirt.graphics_type = "none" # spice
+      libvirt.video_type = "cirrus"
+      # libvirt.graphics_port = 5940
+      # libvirt.graphics_ip = main_ip
+    end
+
+    # Networking examples
+    node.vm.network :private_network,
+      libvirt__tunnel_type: "udp",
+      libvirt__tunnel_local_ip: "127.1.1.1",
+      libvirt__tunnel_local_port: "10001",
+      libvirt__tunnel_ip: "127.1.1.2",
+      libvirt__tunnel_port: "10001",
+      libvirt__iface_name: "1/1/1",
+      auto_config: false
+
+    # SSH
+    node.ssh.username = "vagrant"
+    node.ssh.password = "vagrant"
+    node.ssh.insert_key = false
+
+    # Provisioning (Ansible)
+    # node.vm.provision "ansible" do |ansible|
+    #   ansible.compatibility_mode = "2.0"
+    #   ansible.playbook = "./playbooks/cisco-c8000v_prov.yml"
+    #   ansible.inventory_path = "./inventory.ini"
+    #   ansible.verbose = 'vvvv'
+    # end
+  end
+end
