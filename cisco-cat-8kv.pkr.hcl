@@ -13,15 +13,35 @@ packer {
 
 variable "version" {
   type    = string
-  default = "1.0.0"
+  default = "unknown"
+}
+
+variable "gui_disabled" {
+  type    = bool
+  default = true
+}
+
+variable "boot_time" {
+  type    = string
+  default = "2m"
+}
+
+variable "boot_key_interval" {
+  type    = string
+  default = "50ms"
 }
 
 variable "vm_name" {
   default = "cisco-catalyst-8kv"
 }
 
-variable "qcow2_path" {
-  default = "/var/lib/libvirt/images/cisco-catalyst-8kv-17.10.01a.qcow2"
+variable "image_name" {
+  type    = string
+  default = "cisco-catalyst-8kv"
+}
+
+variable "image_path" {
+  default = "/var/lib/libvirt/images"
 }
 
 variable "qemu_binary" {
@@ -32,32 +52,36 @@ variable "telnet_port" {
   default = "52099"
 }
 
-source "qemu" "cisco-catalyst-8kv" {
-  vm_name          = var.vm_name
-  iso_url          = var.qcow2_path
-  iso_checksum     = "none"
-  disk_image       = true
-  format           = "qcow2"
-  accelerator      = "kvm"
-  cpus             = 2
-  memory           = "4096"
-  headless         = true
-  qemu_binary      = var.qemu_binary
-  net_device       = "virtio-net"
-  shutdown_timeout = "5m"
+variable "out_dir" {
+  type    = string
+  default = "tmp_out"
+}
 
-  qemuargs = [
-    ["-cdrom", "/var/lib/libvirt/images/cisco-catalyst-8kv-17.10.01a.qcow2"],
+source "qemu" "cisco-catalyst-8kv" {
+  accelerator       = "kvm"
+  qemu_binary       = var.qemu_binary
+  cpus              = 2
+  memory            = "4096"
+  disk_image        = true
+  format            = "qcow2"
+  net_device        = "virtio-net"
+  iso_checksum      = "none"
+  iso_url           = "${var.image_path}/${var.image_name}"
+  boot_wait         = "${var.boot_time}"
+  boot_key_interval = "${var.boot_key_interval}"
+  headless          = "${var.gui_disabled}"
+  communicator      = "none"
+  vm_name           = var.vm_name
+  output_directory = "${var.out_dir}"
+  shutdown_timeout  = "5m"
+  qemuargs          = [
+    ["-cdrom", "${var.image_path}/${var.image_name}"],
     ["-nographic"],
     ["-serial", "telnet:127.0.0.1:${var.telnet_port},server,nowait"],
     ["-boot", "d"],
     ["-pidfile", "/tmp/cisco-catalyst-8kv.pid"]
   ]
-
-  boot_wait = "2m"
-  communicator = "none"
 }
-
 
 build {
   name = "cisco-catalyst-8kv"
@@ -79,6 +103,7 @@ build {
   }
 
   post-processor "vagrant" {
+    vagrantfile_template = "src/Vagrantfile"
     output = "builds/cisco-catalyst-8kv-${var.version}.box"
   }
 }

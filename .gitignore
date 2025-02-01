@@ -1,0 +1,6 @@
+packer_cache/
+builds/*
+!builds/.gitkeep
+.vagrant/
+*.box
+*.explog

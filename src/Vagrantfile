@@ -1,64 +1,37 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
 Vagrant.configure("2") do |config|
-  config.vm.define "router1" do |node|
-    
-    # Basic VM info
-    node.vm.guest = :freebsd
+  # Use Vagrant's default insecure key for SSH
+  config.ssh.insert_key = false
+  # Set boot timeout to 3 minutes
+  config.vm.boot_timeout = 180
+  # Disable default shared folder between host and guest
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+  # Prevent Vagrant from modifying fstab inside the guest VM
+  config.vm.allow_fstab_modification = false
+  # Prevent Vagrant from modifying the hosts file inside the guest VM
+  config.vm.allow_hosts_modification = false
+  # Explicitly set the guest OS type to FreeBSD to avoid autodetection issues
+  config.vm.guest = :freebsd
 
-    node.vm.box = "cisco-catalyst-8kv"
-    node.vm.box_version = "17.10.01a"
-
-    # Disable or modify synced folders
-    node.nfs.verify_installed = false
-    node.vm.synced_folder ".", "/vagrant", disabled: true
-
-    # Disable hosts modification
-    node.vm.allow_hosts_modification = false
-
-    # Provider-specific options
-    node.vm.provider :libvirt do |libvirt|
-      libvirt.management_network_name = "default"
-      # libvirt.management_network_address = "192.168.0.0/24"
-      # libvirt.management_network_mac = "52:54:00:00:01:05"
-      libvirt.management_network_keep = true
-
-      # domain.cpus = 1
-      libvirt.features = ['acpi']
-      # domain.memory = 4096
-      libvirt.disk_driver :cache => 'none'
-      # domain.nic_model_type = 'virtio'
-
-
-      libvirt.cpus = 2
-      libvirt.memory = 4096
-      libvirt.disk_bus = "virtio"
-      libvirt.nic_model_type = "virtio"
-      # libvirt.graphics_type = "none" # spice
-      libvirt.video_type = "cirrus"
-      # libvirt.graphics_port = 5940
-      # libvirt.graphics_ip = main_ip
-    end
-
-    # Networking examples
-    node.vm.network :private_network,
-      libvirt__tunnel_type: "udp",
-      libvirt__tunnel_local_ip: "127.1.1.1",
-      libvirt__tunnel_local_port: "10001",
-      libvirt__tunnel_ip: "127.1.1.2",
-      libvirt__tunnel_port: "10001",
-      libvirt__iface_name: "1/1/1",
-      auto_config: false
-
-    # SSH
-    node.ssh.username = "vagrant"
-    node.ssh.password = "vagrant"
-    node.ssh.insert_key = false
-
-    # Provisioning (Ansible)
-    # node.vm.provision "ansible" do |ansible|
-    #   ansible.compatibility_mode = "2.0"
-    #   ansible.playbook = "./playbooks/cisco-catalyst-8kv_prov.yml"
-    #   ansible.inventory_path = "./inventory.ini"
-    #   ansible.verbose = 'vvvv'
-    # end
+  # Configure the Libvirt provider settings
+  config.vm.provider :libvirt do |libvirt|
+    # Allocate 2 CPU cores to the VM
+    libvirt.cpus = 2
+    # Assign 4GB of RAM to the VM
+    libvirt.memory = 4096 
+    # Enable ACPI support (helps with power management and shutdown handling)
+    libvirt.features = ['acpi']
+    # Set disk caching mode to 'none' for better consistency in virtualization environments
+    libvirt.disk_driver :cache => 'none'
+    # Use the VirtIO bus for disk operations to optimize performance
+    libvirt.disk_bus = "virtio"
+    # Use the VirtIO model for network interfaces to improve network performance
+    libvirt.nic_model_type = "virtio"
+    # Disable graphical output
+    libvirt.graphics_type = "none"
+    # Set video type to 'cirrus' for compatibility
+    libvirt.video_type = "cirrus"
   end
 end
