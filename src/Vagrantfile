@@ -4,7 +4,7 @@ Vagrant.configure("2") do |config|
     # Basic VM info
     node.vm.guest = :freebsd
 
-    node.vm.box = "cisco-c8000v"
+    node.vm.box = "cisco-catalyst-8kv"
     node.vm.box_version = "17.10.01a"
 
     # Disable or modify synced folders
@@ -56,7 +56,7 @@ Vagrant.configure("2") do |config|
     # Provisioning (Ansible)
     # node.vm.provision "ansible" do |ansible|
     #   ansible.compatibility_mode = "2.0"
-    #   ansible.playbook = "./playbooks/cisco-c8000v_prov.yml"
+    #   ansible.playbook = "./playbooks/cisco-catalyst-8kv_prov.yml"
     #   ansible.inventory_path = "./inventory.ini"
     #   ansible.verbose = 'vvvv'
     # end

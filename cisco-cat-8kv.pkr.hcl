@@ -17,11 +17,11 @@ variable "version" {
 }
 
 variable "vm_name" {
-  default = "c8000v"
+  default = "cisco-catalyst-8kv"
 }
 
 variable "qcow2_path" {
-  default = "/var/lib/libvirt/images/c8000v-17.10.01a.qcow2"
+  default = "/var/lib/libvirt/images/cisco-catalyst-8kv-17.10.01a.qcow2"
 }
 
 variable "qemu_binary" {
@@ -32,7 +32,7 @@ variable "telnet_port" {
   default = "52099"
 }
 
-source "qemu" "c8000v" {
+source "qemu" "cisco-catalyst-8kv" {
   vm_name          = var.vm_name
   iso_url          = var.qcow2_path
   iso_checksum     = "none"
@@ -47,11 +47,11 @@ source "qemu" "c8000v" {
   shutdown_timeout = "5m"
 
   qemuargs = [
-    ["-cdrom", "/var/lib/libvirt/images/c8000v-17.10.01a.qcow2"],
+    ["-cdrom", "/var/lib/libvirt/images/cisco-catalyst-8kv-17.10.01a.qcow2"],
     ["-nographic"],
     ["-serial", "telnet:127.0.0.1:${var.telnet_port},server,nowait"],
     ["-boot", "d"],
-    ["-pidfile", "/tmp/c8000v.pid"]
+    ["-pidfile", "/tmp/cisco-catalyst-8kv.pid"]
   ]
 
   boot_wait = "2m"
@@ -60,10 +60,10 @@ source "qemu" "c8000v" {
 
 
 build {
-  name = "c8000v"
+  name = "cisco-catalyst-8kv"
 
   sources = [
-    "qemu.c8000v"
+    "qemu.cisco-catalyst-8kv"
   ]
 
   provisioner "shell-local" {
@@ -74,11 +74,11 @@ build {
 
   provisioner "shell-local" {
     inline = [
-      "pkill -f '/usr/bin/qemu-system-x86_64.*-name c8000v'"
+      "pkill -f '/usr/bin/qemu-system-x86_64.*-name cisco-catalyst-8kv'"
     ]
   }
 
   post-processor "vagrant" {
-    output = "builds/c8000v-${var.version}.box"
+    output = "builds/cisco-catalyst-8kv-${var.version}.box"
   }
 }

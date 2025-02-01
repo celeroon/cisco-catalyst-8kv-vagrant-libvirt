@@ -7,7 +7,7 @@ set port "52099"
 set prompt "(>|#)\\s*$"
 
 # Log file for capturing the session output
-log_file -noappend ./cisco-cat8kv-console.explog
+log_file -noappend ./cisco-catalyst-8kv-console.explog
 
 # Start a Telnet session to the target device
 spawn telnet $host $port
