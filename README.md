@@ -42,7 +42,7 @@ A Packer template for creating a Cisco Catalyst 8kv Vagrant box for the [libvirt
    cd cisco-catalyst-8kv-vagrant-libvirt
    ```
 
-6. Use Packer to build the Vagrant Box for the specified version of FortiSIEM:
+6. Use Packer to build the Vagrant Box for the specified version of Cisco Catalyst 8kv:
 
    ```bash
    packer build -var "version=17.10.01a" -var "image_name=cisco-catalyst-8kv.qcow2" cisco-cat-8kv.pkr.hcl
