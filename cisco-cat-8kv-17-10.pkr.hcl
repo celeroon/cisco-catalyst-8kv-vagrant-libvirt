@@ -32,7 +32,7 @@ variable "boot_key_interval" {
 }
 
 variable "vm_name" {
-  default = "cisco-catalyst-8kv"
+  default = "cisco-catalyst-8kv.qcow2"
 }
 
 variable "image_name" {
