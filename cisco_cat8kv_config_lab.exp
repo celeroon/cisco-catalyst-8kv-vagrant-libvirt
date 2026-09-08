@@ -1,0 +1,219 @@
+#!/usr/bin/expect
+# Catalyst 8000v serial provisioning for the non-vagrant lab build (cisco-cat-8kv-lab.pkr.hcl).
+#
+# Differs from cisco_cat8kv_config.exp in how it drives the console, so it survives booting the
+# ready-to-run qcow2 directly (rather than as an install CD):
+#   1. After the license-activation reload the c8000v runs a one-time factory reset + PnP
+#      discovery (~2-3 min). We settle before configuring, or the management config races PnP
+#      and gets overwritten.
+#   2. Every command waits for the prompt (no burst sends), so nothing is dropped on a device
+#      that is still initialising.
+
+set timeout 300
+set host "127.0.0.1"
+set port "52099"
+set prompt "(>|#)\\s*$"
+
+log_file -noappend ./cisco-catalyst-8kv-console.explog
+
+spawn telnet $host $port
+
+# Enter privileged exec (send the enable secret if prompted, e.g. after a reload).
+proc enable_priv {} {
+    global prompt
+    send "enable\r"
+    expect {
+        "Password:" { send "SuperSecretPass123$\r"; exp_continue }
+        -re $prompt {}
+    }
+}
+
+# Disable setup command facility
+send "\r"
+expect "initial configuration dialog"
+send "no\r"
+expect "Enter enable secret"
+send "SuperSecretPass123$\r"
+expect "Confirm enable secret"
+send "SuperSecretPass123$\r"
+expect "Enter your selection"
+send "0\r"
+expect "Press RETURN to get started"
+send "\r"
+
+# Privileged exec + global config
+expect -re $prompt
+enable_priv
+send "configure terminal\r"
+expect -re $prompt
+
+# Activate advantage license
+send "license boot level network-premier addon dna-premier\r"
+expect -re $prompt
+
+# Save and reboot to activate the license
+send "end\r"
+expect -re $prompt
+send "write memory\r"
+expect -re $prompt
+send "reload\r"
+expect "Proceed with reload"
+send "\r"
+
+# Back from the reload — the box also runs a first-boot factory reset + PnP discovery here.
+expect "Press RETURN to get started"
+send "\r"
+
+# Settle: let factory-reset / PnP discovery / Smart Licensing / crypto finish before we
+# configure, or the management config below races them and gets dropped/overwritten.
+sleep 180
+send "\r"
+expect -re $prompt
+
+# Privileged exec + global config
+enable_priv
+send "configure terminal\r"
+expect -re $prompt
+
+# User account
+send "username vagrant privilege 15 secret vagrant\r"
+expect -re $prompt
+
+# AAA
+send "aaa new-model\r"
+expect -re $prompt
+send "aaa authentication login default local\r"
+expect -re $prompt
+send "aaa authorization exec default local\r"
+expect -re $prompt
+
+# Disable DNS lookups
+send "no ip domain lookup\r"
+expect -re $prompt
+
+# Shell processing
+send "shell processing full\r"
+expect -re $prompt
+
+# Console line
+send "line console 0\r"
+expect -re $prompt
+send "privilege level 15\r"
+expect -re $prompt
+send "exec-timeout 0 0\r"
+expect -re $prompt
+send "logging synchronous\r"
+expect -re $prompt
+send "exit\r"
+expect -re $prompt
+
+# VTY lines (SSH)
+send "line vty 0 4\r"
+expect -re $prompt
+send "no exec-banner\r"
+expect -re $prompt
+send "exec-timeout 0 0\r"
+expect -re $prompt
+send "logging synchronous\r"
+expect -re $prompt
+send "transport input ssh\r"
+expect -re $prompt
+send "exit\r"
+expect -re $prompt
+
+# Management interface: VRF + DHCP
+send "vrf definition Mgmt-intf\r"
+expect -re $prompt
+send "address-family ipv4\r"
+expect -re $prompt
+send "exit-address-family\r"
+expect -re $prompt
+send "exit\r"
+expect -re $prompt
+send "interface GigabitEthernet1\r"
+expect -re $prompt
+send "shutdown\r"
+expect -re $prompt
+send "vrf forwarding Mgmt-intf\r"
+expect -re $prompt
+send "ip address dhcp\r"
+expect -re $prompt
+send "no cdp enable\r"
+expect -re $prompt
+send "no shutdown\r"
+expect -re $prompt
+send "exit\r"
+expect -re $prompt
+
+# SSH parameters
+send "ip domain name example.com\r"
+expect -re $prompt
+send "ip ssh version 2\r"
+expect -re $prompt
+send "ip ssh source-interface GigabitEthernet1\r"
+expect -re $prompt
+send "ip ssh rsa keypair-name VAGRANT\r"
+expect -re $prompt
+send "crypto key generate rsa usage-keys label VAGRANT modulus 2048\r"
+expect -re $prompt
+send "ip scp server enable\r"
+expect -re $prompt
+send "ip ssh pubkey-chain\r"
+expect -re $prompt
+send "username vagrant\r"
+expect -re $prompt
+send "key-hash ssh-rsa DD3BB82E850406E9ABFFA80AC0046ED6\r"
+expect -re $prompt
+send "exit\r"
+expect -re $prompt
+
+# EEM applet to regenerate RSA keys after a restart
+send "event manager session cli username vagrant\r"
+expect -re $prompt
+send "event manager applet EEM_SSH_Keygen authorization bypass\r"
+expect -re $prompt
+send "event syslog pattern SYS-5-RESTART\r"
+expect -re $prompt
+send "action 0.0 set status none\r"
+expect -re $prompt
+send "action 1.0 cli command enable\r"
+expect -re $prompt
+send "action 2.0 cli command \"show ip ssh | include \^SSH\"\r"
+expect -re $prompt
+send "action 2.1 regexp \"\(\[ED]\[\^ \]\+)\" \\\$_cli_result result status\r"
+expect -re $prompt
+send "action 2.2 syslog priority informational msg \"SSH is currently \\\$status\"\r"
+expect -re $prompt
+send "action 3.0 if \\\$status eq Disabled\r"
+expect -re $prompt
+send "action 3.1 cli command \"configure terminal\"\r"
+expect -re $prompt
+send "action 3.2 cli command \"crypto key generate rsa usage-keys label VAGRANT modulus 2048\"\r"
+expect -re $prompt
+send "action 3.3 cli command \"end\"\r"
+expect -re $prompt
+send "action 3.4 cli command \"copy run start\"\r"
+expect -re $prompt
+send "action 3.5 syslog priority informational msg \"SSH keys generated by EEM\"\r"
+expect -re $prompt
+send "action 4.0 end\r"
+expect -re $prompt
+send "end\r"
+expect -re $prompt
+
+# netconf-yang
+send "conf t\r"
+expect -re $prompt
+send "netconf-yang\r"
+expect -re $prompt
+send "end\r"
+expect -re $prompt
+
+# Save running-config to startup-config
+send "copy running-config startup-config\r"
+expect "Destination filename"
+send "\r"
+expect -re $prompt
+
+# Pause to ensure the save completes
+sleep 5
